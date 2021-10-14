@@ -1,13 +1,14 @@
-import { Store } from "mx-puppet-bridge";
+import { Store, Log } from "mx-puppet-bridge";
 
 const CURRENT_SCHEMA = 1;
+const log = new Log("TeamsPuppet:store");
 
 export interface IStoreToken {
 	puppetId: number,
 	accessToken: string,
 	refreshToken: string,
 	userId: string,
-	login: number,
+	// login: number,
 	accessExpiry: number
 }
 
@@ -32,27 +33,27 @@ export class MSTeamsStore {
 				refreshToken: rows[0].refresh_token as string,
 				userId: rows[0].user_id as string,
 				accessExpiry: rows[0].access_expiry as number,
-				login: rows[0].login as number
+				// login: rows[0].login as number
 			}
 		}
 		return Promise.reject("Token not found");
 	}
 
 	public async storeToken(puppetId: number, token: IStoreToken) {
+		log.info(token);
 		const exists = await this.store.db.Get("SELECT 1 FROM teams_tokenstore WHERE puppet_id = $p AND user_id = $u",
 			{ p: puppetId, u: token.userId });
 		
 		let sql: string = `INSERT INTO teams_tokenstore (
-			puppet_id, access_token, refresh_token, user_id, login, access_expiry
+			puppet_id, access_token, refresh_token, user_id, access_expiry
 		) VALUES (
-			$puppetId, $accessToken, $refreshToken, $userId, $login, $accessExpiry
+			$puppetId, $accessToken, $refreshToken, $userId, $accessExpiry
 		)`;
 
 		if (exists) {
 			sql = `UPDATE teams_tokenstore SET
 				access_token = $accessToken, 
 				refresh_token = $refreshToken,
-				login = $login,
 				access_expiry = $accessExpiry
 				WHERE
 					puppet_id = $puppetId
@@ -64,7 +65,6 @@ export class MSTeamsStore {
 			accessToken: token.accessToken,
 			refreshToken: token.refreshToken,
 			userId: token.userId,
-			login: token.login,
 			accessExpiry: token.accessExpiry
 		});
 	}

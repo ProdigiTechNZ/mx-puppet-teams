@@ -63,7 +63,7 @@ export class AuthProvider {
 			// Update the store token, save and return
 			currentToken.accessToken = response.access_token;
 			currentToken.refreshToken = response.refresh_token;
-			currentToken.accessExpiry = response.expires_on;
+			currentToken.accessExpiry = response.expires_in+Date.now();
 
 			this.store.storeToken(currentToken.puppetId, currentToken);
 
@@ -87,10 +87,10 @@ export class AuthProvider {
 		let token: IStoreToken = {
 			puppetId: puppetId,
 			userId: (jwt_decode(tokenData.access_token) as any).oid,
-			accessExpiry: tokenData.expires_on,
+			accessExpiry: tokenData.expires_in+Date.now(),
 			refreshToken: tokenData.refresh_token,
-			accessToken: tokenData.access_token,
-			login: tokenData.not_before
+			accessToken: tokenData.access_token
+			//			login: tokenData.not_before
 		}
 
 		await this.store.storeToken(puppetId, token);
@@ -113,10 +113,11 @@ export class AuthProvider {
 				client_id: Config().oauth.clientId,
 				client_secret: Config().oauth.clientSecret,
 				code: _accessCode,
-				redirect_uri: urljoin(Config().oauth.serverBaseUri, `/msteams/oauth`),
-				resource: 'https://graph.microsoft.com'
+				scope: 'offline_access https://graph.microsoft.com/User.Read',
+				redirect_uri: urljoin(Config().oauth.serverBaseUri, `/msteams/oauth`)
+				// resource: 'https://graph.microsoft.com'
 			};
-
+			log.info(tokenRequestBody)
 			request.post(
 				{ url: tokenRequestUrl, form: tokenRequestBody },
 				(err, httpResponse, body) => {
@@ -166,14 +167,13 @@ export class AuthProvider {
 		}
 
 		const token = AuthProvider.tmpTokenStore[str.trim()]
-
+		log.info(token);
 		// Check that token has required Scopes
 		const scopes = token.scope.toLowerCase().split(" ");
-		if (!(scopes.includes("chat.readwrite") && scopes.includes("chatmessage.read") && scopes.includes("user.read"))) {
+		if (!(scopes.includes("https://graph.microsoft.com/chat.readwrite") && scopes.includes("https://graph.microsoft.com/chatmessage.read") && scopes.includes("https://graph.microsoft.com/user.read"))) {
 			retData.error = `The received token for auth code '${str.trim()}' does not include the required scopes (Chat.ReadWrite, ChatMessage.Read and ChatMessage.Send).  Please check your Azure Application setup.`;
 			return retData;
-		}
-
+			}
 		// Extract userId from Token
 		let userId: string = "";
 		try {
@@ -194,8 +194,8 @@ export class AuthProvider {
 			auth_code: str.trim(),
 			access_token: token.access_token,
 			refresh_token: token.refresh_token,
-			login: token.not_before,
-			expiry: token.expires_on
+			// login: token.not_before,
+			expiry: token.expires_in+Date.now()
 		}
 
 		retData.success = true;
@@ -236,7 +236,8 @@ export const getNewAccessToken = async (code: string): Promise<any> => {
 				client_secret: Config().oauth.clientSecret,
 				refresh_token: code
 			}
-		}).json();
+			}).json();
+		log.info(response);
 		return response;
 	} catch (error) {
 		log.error("Error getting access token", error.response.body);

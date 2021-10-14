@@ -14,7 +14,6 @@ export class Schema implements IDbSchema {
 				access_token TEXT NOT NULL,
 				refresh_token TEXT NOT NULL,
 				user_id TEXT NOT NULL,
-				login INTEGER NOT NULL,
 				access_expiry INTEGER NOT NULL
 			);`, "teams_tokenstore");
 		await store.createTable(`
